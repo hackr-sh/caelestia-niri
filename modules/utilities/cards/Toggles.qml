@@ -74,12 +74,6 @@ StyledRect {
             }
 
             Toggle {
-                icon: "gamepad"
-                checked: GameMode.enabled
-                onClicked: GameMode.enabled = !GameMode.enabled
-            }
-
-            Toggle {
                 icon: "notifications_off"
                 checked: Notifs.dnd
                 onClicked: Notifs.dnd = !Notifs.dnd
