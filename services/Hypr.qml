@@ -19,7 +19,7 @@ Singleton {
     readonly property HyprlandToplevel activeToplevel: Hyprland.activeToplevel?.wayland?.activated ? Hyprland.activeToplevel : null
     readonly property HyprlandWorkspace focusedWorkspace: Hyprland.focusedWorkspace
     readonly property HyprlandMonitor focusedMonitor: Hyprland.focusedMonitor
-    readonly property int activeWsId: focusedWorkspace?.id ?? 1
+    readonly property int activeWsId: isNiriRunning() ? currentWorkspace : (focusedWorkspace?.id ?? 1)
 
     readonly property HyprKeyboard keyboard: extras.devices.keyboards.find(kb => kb.main) ?? null
     readonly property bool capsLock: keyboard?.capsLock ?? false
@@ -34,11 +34,108 @@ Singleton {
     readonly property alias devices: extras.devices
 
     property bool hadKeyboard
+    property int currentWorkspace: 1
 
     signal configReloaded
 
     function dispatch(request: string): void {
-        Hyprland.dispatch(request);
+        console.log("Dispatch request:", request, "Niri detected:", niriDetected);
+        
+        // Always try niri first if detected, otherwise try hyprland
+        if (niriDetected) {
+            console.log("Using niri dispatch for:", request);
+            dispatchNiri(request);
+        } else {
+            console.log("Using hyprland dispatch for:", request);
+            // Try to use Hyprland, but if it fails, try niri as fallback
+            try {
+                Hyprland.dispatch(request);
+            } catch (e) {
+                console.log("Hyprland dispatch failed, trying niri as fallback:", e);
+                dispatchNiri(request);
+            }
+        }
+    }
+
+    property bool niriDetected: false
+    
+    signal niriDetectionChanged(bool detected)
+    
+    function isNiriRunning(): bool {
+        return niriDetected;
+    }
+    
+    function forceNiriDetection(): void {
+        console.log("Manually forcing niri detection");
+        const wasDetected = niriDetected;
+        niriDetected = true;
+        if (wasDetected !== niriDetected) {
+            niriDetectionChanged(niriDetected);
+        }
+    }
+    
+    function checkForNiri(): void {
+        console.log("Checking for niri availability...");
+        
+        // Since we already detected niri via environment variables,
+        // we don't need to check again via command
+        console.log("Niri detection already set via environment variables");
+    }
+
+    function dispatchNiri(request: string): void {
+        console.log("Dispatching niri command:", request);
+        
+        // Parse the request and convert to niri commands
+        if (request.startsWith("workspace ")) {
+            const workspaceId = request.split(" ")[1];
+            if (workspaceId.startsWith("r")) {
+                // Relative workspace switching
+                const direction = workspaceId.includes("+") ? 1 : -1;
+                const amount = parseInt(workspaceId.replace(/[r+-]/g, ""));
+                if (amount > 0) {
+                    niriCommand(`action focus-workspace-${direction > 0 ? "down" : "up"}`);
+                } else {
+                    niriCommand(`action focus-workspace-${direction > 0 ? "down" : "up"}`);
+                }
+            } else {
+                // Absolute workspace switching
+                const wsId = parseInt(workspaceId);
+                if (wsId > 0) {
+                    currentWorkspace = wsId;
+                    niriCommand(`action focus-workspace ${workspaceId}`);
+                }
+            }
+        } else if (request === "togglespecialworkspace special") {
+            niriCommand("action toggle-overview");
+        } else if (request.startsWith("togglespecialworkspace ")) {
+            const specialName = request.split(" ")[1];
+            niriCommand("action toggle-overview");
+        }
+    }
+
+    function niriCommand(command: string): void {
+        console.log("Executing niri command:", command);
+        
+        // Parse the command to extract the action
+        const parts = command.split(" ");
+        const action = parts[1]; // Skip "action"
+        const args = parts.slice(2);
+        
+        // Build the niri command
+        const niriArgs = ["niri", "msg", "action", action];
+        if (args.length > 0) {
+            niriArgs.push(...args);
+        }
+        
+        console.log("Niri command args:", niriArgs);
+        
+        // Execute the command using Quickshell.execDetached
+        try {
+            Quickshell.execDetached(niriArgs);
+            console.log("Niri command executed successfully");
+        } catch (error) {
+            console.error("Niri command failed:", error);
+        }
     }
 
     function monitorFor(screen: ShellScreen): HyprlandMonitor {
@@ -49,7 +146,31 @@ Singleton {
         extras.batchMessage(["keyword bindlni ,Caps_Lock,global,caelestia:refreshDevices", "keyword bindlni ,Num_Lock,global,caelestia:refreshDevices"]);
     }
 
-    Component.onCompleted: reloadDynamicConfs()
+    Component.onCompleted: {
+        reloadDynamicConfs();
+        
+        // Check if we're running under niri by checking environment variables
+        if (Quickshell.env("NIRI_SOCKET")) {
+            console.log("Detected niri environment via NIRI_SOCKET, forcing niri detection");
+            forceNiriDetection();
+        } else if (Quickshell.env("WAYLAND_DISPLAY") && !Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE")) {
+            console.log("Detected niri environment via Wayland display, forcing niri detection");
+            forceNiriDetection();
+        } else {
+            console.log("No niri environment detected, checking via command");
+            checkForNiri();
+        }
+        
+        // Check for niri availability periodically
+        timer.start();
+    }
+    
+    Timer {
+        id: timer
+        interval: 5000 // Check every 5 seconds
+        repeat: true
+        onTriggered: checkForNiri()
+    }
 
     onCapsLockChanged: {
         if (!Config.utilities.toasts.capsLockChanged)

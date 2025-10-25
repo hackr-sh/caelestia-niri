@@ -7,7 +7,7 @@ import qs.modules.windowinfo
 import qs.modules.controlcenter
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Hyprland
+import Quickshell
 import QtQuick
 
 Item {
@@ -57,11 +57,12 @@ Item {
 
     Keys.onEscapePressed: close()
 
-    HyprlandFocusGrab {
-        active: root.isDetached
-        windows: [QsWindow.window]
-        onCleared: root.close()
-    }
+    // Focus grab not available for niri
+    // HyprlandFocusGrab {
+    //     active: root.isDetached
+    //     windows: [QsWindow.window]
+    //     onCleared: root.close()
+    // }
 
     Binding {
         when: root.isDetached
