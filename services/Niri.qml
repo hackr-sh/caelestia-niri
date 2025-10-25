@@ -13,7 +13,7 @@ Singleton {
 
     // Properties to maintain compatibility with existing bar components
     readonly property var toplevels: ({ values: [] })
-    readonly property var workspaces: ({ values: [] })
+    property var workspaces: []
     readonly property var monitors: ({ values: [] })
 
     readonly property var activeToplevel: null
@@ -77,25 +77,24 @@ Singleton {
     function niriCommand(command: string): void {
         console.log("Executing niri command:", command);
         
-        // Try to execute niri command using Process
-        const process = Qt.createQmlObject(`
-            import QtQuick
-            Process {
-                id: process
-                command: ["niri", "msg", "${command}"]
-                onFinished: {
-                    console.log("Niri command executed successfully:", "${command}")
-                    process.destroy()
-                }
-                onError: {
-                    console.error("Niri command failed:", "${command}", error)
-                    // Fallback: try alternative command format
-                    process.command = ["niri", "msg", "workspace", "${command}"]
-                    process.start()
-                }
+        // Use the switch process for workspace switching
+        if (command.startsWith("focus-workspace")) {
+            const parts = command.split(" ");
+            if (parts.length > 1) {
+                const workspaceId = parts[1];
+                console.log("Switching to workspace:", workspaceId);
+                niriSwitchProcess.command = ["niri", "msg", "action", "focus-workspace", workspaceId];
+                niriSwitchProcess.running = true;
             }
-        `, root);
-        process.start();
+        } else {
+            // For other commands, use execDetached
+            try {
+                Quickshell.execDetached(["niri", "msg", "action", command]);
+                console.log("Niri command executed successfully");
+            } catch (error) {
+                console.error("Niri command failed:", error);
+            }
+        }
     }
 
     // Function to maintain compatibility
@@ -114,9 +113,52 @@ Singleton {
         console.log("Niri: Dynamic config reloading not supported");
     }
 
+    // Process to fetch niri workspaces
+    Process {
+        id: niriWorkspaceProcess
+        command: ["niri", "msg", "-j", "workspaces"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // console.log("Received niri workspace data:", JSON.stringify(JSON.parse(text), null, 2));
+                try {
+                    const result = JSON.parse(text);
+                    workspaces = result.sort((a, b) => a.idx - b.idx);
+                    
+                    // Find the active workspace
+                    const activeWs = result.find(w => w.is_active);
+                    if (activeWs) {
+                        currentWorkspace = activeWs.idx;
+                    }
+                } catch (e) {
+                    console.error("Failed to parse niri workspaces:", e);
+                }
+            }
+        }
+    }
+    
+    // Process for switching workspaces
+    Process {
+        id: niriSwitchProcess
+        running: false
+    }
+    
+    // Timer to refresh workspace info
+    Timer {
+        id: niriRefreshTimer
+        interval: 100 // Refresh every 100ms
+        running: true
+        repeat: true
+        onTriggered: {
+            niriWorkspaceProcess.running = true;
+        }
+    }
+
     Component.onCompleted: {
         // Initialize niri-specific setup
         console.log("Niri service initialized");
+        niriWorkspaceProcess.running = true;
     }
 
     onCapsLockChanged: {

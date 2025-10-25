@@ -18,9 +18,16 @@ ColumnLayout {
     // Unanimated prop for others to use as reference
     readonly property int size: implicitHeight + (hasWindows ? Appearance.padding.small : 0)
 
-    readonly property int ws: groupOffset + index + 1
+    readonly property int ws: {
+        if (Hypr.isNiriRunning()) {
+            const wsId = Hypr.niriWorkspaces[index]?.idx ?? (groupOffset + index + 1);
+            return wsId;
+        } else {
+            return groupOffset + index + 1;
+        }
+    }
     readonly property bool isOccupied: occupied[ws] ?? false
-    readonly property bool hasWindows: isOccupied && Config.bar.workspaces.showWindows
+    readonly property bool hasWindows: isOccupied && Config.bar.workspaces.showWindows 
 
     Layout.alignment: Qt.AlignHCenter
     Layout.preferredHeight: size
@@ -46,7 +53,7 @@ ColumnLayout {
             const label = Config.bar.workspaces.label || displayName;
             const occupiedLabel = Config.bar.workspaces.occupiedLabel || label;
             const activeLabel = Config.bar.workspaces.activeLabel || (root.isOccupied ? occupiedLabel : label);
-            return root.activeWsId === root.ws ? activeLabel : root.isOccupied ? occupiedLabel : label;
+            return root.isOccupied ? occupiedLabel : label;
         }
         color: Config.bar.workspaces.occupiedBg || root.isOccupied || root.activeWsId === root.ws ? Colours.palette.m3onSurface : Colours.layer(Colours.palette.m3outlineVariant, 2)
         verticalAlignment: Qt.AlignVCenter

@@ -19,7 +19,7 @@ Singleton {
     readonly property HyprlandToplevel activeToplevel: Hyprland.activeToplevel?.wayland?.activated ? Hyprland.activeToplevel : null
     readonly property HyprlandWorkspace focusedWorkspace: Hyprland.focusedWorkspace
     readonly property HyprlandMonitor focusedMonitor: Hyprland.focusedMonitor
-    readonly property int activeWsId: isNiriRunning() ? currentWorkspace : (focusedWorkspace?.id ?? 1)
+    readonly property int activeWsId: isNiriRunning() ? niriActiveWorkspace : (focusedWorkspace?.id ?? 1)
 
     readonly property HyprKeyboard keyboard: extras.devices.keyboards.find(kb => kb.main) ?? null
     readonly property bool capsLock: keyboard?.capsLock ?? false
@@ -34,7 +34,6 @@ Singleton {
     readonly property alias devices: extras.devices
 
     property bool hadKeyboard
-    property int currentWorkspace: 1
 
     signal configReloaded
 
@@ -58,8 +57,20 @@ Singleton {
     }
 
     property bool niriDetected: false
+    property var niriWorkspaces: []
+    property int niriActiveWorkspace: 1
     
     signal niriDetectionChanged(bool detected)
+    signal niriWorkspacesUpdated()
+    
+    // Dynamic workspace count based on niri or hyprland
+    readonly property int workspaceCount: {
+        if (isNiriRunning()) {
+            return niriWorkspaces.length;
+        } else {
+            return workspaces?.values?.length ?? 5;
+        }
+    }
     
     function isNiriRunning(): bool {
         return niriDetected;
@@ -72,14 +83,33 @@ Singleton {
         if (wasDetected !== niriDetected) {
             niriDetectionChanged(niriDetected);
         }
+        // Fetch workspaces when niri is detected
+        fetchNiriWorkspaces();
     }
     
-    function checkForNiri(): void {
-        console.log("Checking for niri availability...");
+    function fetchNiriWorkspaces(): void {
+        if (!niriDetected) return;
         
-        // Since we already detected niri via environment variables,
-        // we don't need to check again via command
-        console.log("Niri detection already set via environment variables");
+        console.log("Fetching niri workspaces...");
+        
+        // Use the actual workspace data from niri
+        const workspaces = Niri.workspaces;
+
+        workspaces.forEach(ws => {
+            ws.is_active = (ws.id === Niri.activeWsId);
+            ws.is_focused = (ws.id === Niri.activeWsId);
+        });
+        
+        console.log("Setting up niri workspaces with current active workspace:", Niri.activeWsId);
+        niriWorkspaces = workspaces;
+        
+        // Find the active workspace
+        const activeWs = workspaces.find(w => w.is_active);
+        if (activeWs) {
+            niriActiveWorkspace = activeWs.id;
+        }
+        
+        niriWorkspacesUpdated();
     }
 
     function dispatchNiri(request: string): void {
@@ -88,21 +118,24 @@ Singleton {
         // Parse the request and convert to niri commands
         if (request.startsWith("workspace ")) {
             const workspaceId = request.split(" ")[1];
+            console.log("Workspace switch request:", workspaceId);
+            
             if (workspaceId.startsWith("r")) {
-                // Relative workspace switching
+                // Relative workspace switching - use niri command
                 const direction = workspaceId.includes("+") ? 1 : -1;
                 const amount = parseInt(workspaceId.replace(/[r+-]/g, ""));
+                console.log("Relative workspace switch:", direction, amount);
                 if (amount > 0) {
                     niriCommand(`action focus-workspace-${direction > 0 ? "down" : "up"}`);
                 } else {
                     niriCommand(`action focus-workspace-${direction > 0 ? "down" : "up"}`);
                 }
             } else {
-                // Absolute workspace switching
+                // Absolute workspace switching - use direct niri switching
                 const wsId = parseInt(workspaceId);
+                console.log("Absolute workspace switch to:", wsId);
                 if (wsId > 0) {
-                    currentWorkspace = wsId;
-                    niriCommand(`action focus-workspace ${workspaceId}`);
+                    switchToNiriWorkspace(wsId);
                 }
             }
         } else if (request === "togglespecialworkspace special") {
@@ -158,18 +191,22 @@ Singleton {
             forceNiriDetection();
         } else {
             console.log("No niri environment detected, checking via command");
-            checkForNiri();
         }
         
         // Check for niri availability periodically
-        timer.start();
+        detectionTimer.start();
     }
     
+    // Timer for niri detection and workspace refresh
     Timer {
-        id: timer
-        interval: 5000 // Check every 5 seconds
+        id: detectionTimer
+        interval: 1000 // Check every 1 second
         repeat: true
-        onTriggered: checkForNiri()
+        onTriggered: {
+            if (niriDetected) {
+                fetchNiriWorkspaces();
+            }
+        }
     }
 
     onCapsLockChanged: {

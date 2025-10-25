@@ -14,13 +14,15 @@ StyledClippingRect {
     required property ShellScreen screen
 
     readonly property bool onSpecial: (Config.bar.workspaces.perMonitorWorkspaces ? Hypr.monitorFor(screen) : Hypr.focusedMonitor)?.lastIpcObject.specialWorkspace.name !== ""
-    readonly property int activeWsId: Config.bar.workspaces.perMonitorWorkspaces ? (Hypr.monitorFor(screen).activeWorkspace?.id ?? 1) : Hypr.activeWsId
+    readonly property int activeWsId: Niri.activeWsId
 
-    readonly property var occupied: Hypr.workspaces.values.reduce((acc, curr) => {
-        acc[curr.id] = curr.lastIpcObject.windows > 0;
-        return acc;
-    }, {})
-    readonly property int groupOffset: Math.floor((activeWsId - 1) / Config.bar.workspaces.shown) * Config.bar.workspaces.shown
+    readonly property var occupied: {
+        Niri.workspaces.reduce((acc, curr) => {
+            acc[curr.idx] = curr.active_window_id !== null;
+            return acc;
+        }, {})
+    }
+    readonly property int groupOffset: Math.floor((activeWsId - 1) / Niri.workspaces.length) * Niri.workspaces.length
 
     property real blur: onSpecial ? 1 : 0
 
@@ -65,11 +67,11 @@ StyledClippingRect {
             Repeater {
                 id: workspaces
 
-                model: Config.bar.workspaces.shown
+                model: Niri.workspaces
 
                 Workspace {
-                    activeWsId: root.activeWsId
-                    occupied: root.occupied
+                    activeWsId: Niri.activeWsId;
+                    occupied: root.occupied;
                     groupOffset: root.groupOffset
                 }
             }
@@ -91,10 +93,9 @@ StyledClippingRect {
             anchors.fill: layout
             onClicked: event => {
                 const ws = layout.childAt(event.x, event.y).ws;
-                if (Hypr.activeWsId !== ws)
-                    Hypr.dispatch(`workspace ${ws}`);
-                else
-                    Hypr.dispatch("togglespecialworkspace special");
+                if (Niri.activeWsId !== ws) {
+                    Niri.niriCommand(`focus-workspace ${ws}`);
+                }
             }
         }
 
