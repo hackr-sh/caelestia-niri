@@ -31,7 +31,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
 
         animate: true
-        text: Icons.getAppCategoryIcon(Niri.activeToplevel?.app_id, "desktop_windows")
+        text: Icons.getAppCategoryIcon(Niri.activeToplevel?.app_id, "")
         color: root.colour
     }
 
@@ -46,7 +46,7 @@ Item {
     TextMetrics {
         id: metrics
 
-        text: Niri.activeToplevel?.title ?? qsTr("Desktop")
+        text: Niri.activeToplevel?.title ?? qsTr("")
         font.pointSize: Appearance.font.size.smaller
         font.family: Appearance.font.family.mono
         elide: Qt.ElideRight
