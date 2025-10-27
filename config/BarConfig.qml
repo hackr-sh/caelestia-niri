@@ -14,11 +14,11 @@ JsonObject {
 
     property list<var> entries: [
         {
-            id: "logo",
+            id: "workspaces",
             enabled: true
         },
         {
-            id: "workspaces",
+            id: "clock",
             enabled: true
         },
         {
@@ -35,10 +35,6 @@ JsonObject {
         },
         {
             id: "tray",
-            enabled: true
-        },
-        {
-            id: "clock",
             enabled: true
         },
         {

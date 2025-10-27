@@ -126,6 +126,12 @@ ColumnLayout {
                 }
             }
             DelegateChoice {
+                roleValue: "clock"
+                delegate: WrappedLoader {
+                    sourceComponent: Clock {}
+                }
+            }
+            DelegateChoice {
                 roleValue: "activeWindow"
                 delegate: WrappedLoader {
                     sourceComponent: ActiveWindow {
@@ -138,12 +144,6 @@ ColumnLayout {
                 roleValue: "tray"
                 delegate: WrappedLoader {
                     sourceComponent: Tray {}
-                }
-            }
-            DelegateChoice {
-                roleValue: "clock"
-                delegate: WrappedLoader {
-                    sourceComponent: Clock {}
                 }
             }
             DelegateChoice {
