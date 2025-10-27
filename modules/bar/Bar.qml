@@ -118,12 +118,6 @@ ColumnLayout {
                 }
             }
             DelegateChoice {
-                roleValue: "logo"
-                delegate: WrappedLoader {
-                    sourceComponent: OsIcon {}
-                }
-            }
-            DelegateChoice {
                 roleValue: "workspaces"
                 delegate: WrappedLoader {
                     sourceComponent: Workspaces {
