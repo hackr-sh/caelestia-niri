@@ -14,9 +14,10 @@ Singleton {
     // Properties to maintain compatibility with existing bar components
     readonly property var toplevels: ({ values: [] })
     property var workspaces: []
+    property var windows: []
     readonly property var monitors: ({ values: [] })
 
-    readonly property var activeToplevel: null
+    property var activeToplevel: null
     readonly property var focusedWorkspace: null
     readonly property var focusedMonitor: null
     readonly property int activeWsId: currentWorkspace
@@ -137,6 +138,25 @@ Singleton {
             }
         }
     }
+
+    Process {
+        id: niriWindowsProcess
+        command: ["niri", "msg", "-j", "windows"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const result = JSON.parse(text);
+                windows = result;
+                const _activeWindow = result.find(w => w.is_focused);
+                if (_activeWindow) {
+                    activeToplevel = _activeWindow;
+                } else {
+                    activeToplevel = null;
+                }
+            }
+        }
+    }
     
     // Process for switching workspaces
     Process {
@@ -152,6 +172,7 @@ Singleton {
         repeat: true
         onTriggered: {
             niriWorkspaceProcess.running = true;
+            niriWindowsProcess.running = true;
         }
     }
 
@@ -159,6 +180,7 @@ Singleton {
         // Initialize niri-specific setup
         console.log("Niri service initialized");
         niriWorkspaceProcess.running = true;
+        niriWindowsProcess.running = true;
     }
 
     onCapsLockChanged: {
