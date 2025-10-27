@@ -90,8 +90,6 @@ Singleton {
     function fetchNiriWorkspaces(): void {
         if (!niriDetected) return;
         
-        console.log("Fetching niri workspaces...");
-        
         // Use the actual workspace data from niri
         const workspaces = Niri.workspaces;
 
@@ -100,7 +98,6 @@ Singleton {
             ws.is_focused = (ws.id === Niri.activeWsId);
         });
         
-        console.log("Setting up niri workspaces with current active workspace:", Niri.activeWsId);
         niriWorkspaces = workspaces;
         
         // Find the active workspace
