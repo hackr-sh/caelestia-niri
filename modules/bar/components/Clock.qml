@@ -12,6 +12,18 @@ Column {
 
     spacing: Appearance.spacing.small
 
+    StyledText {
+        id: dateText
+
+        anchors.horizontalCenter: parent.horizontalCenter
+
+        horizontalAlignment: StyledText.AlignHCenter
+        text: Time.format("dd\nMM\nyy")
+        font.pointSize: Appearance.font.size.smaller
+        font.family: Appearance.font.family.mono
+        color: root.colour
+    }
+
     Loader {
         anchors.horizontalCenter: parent.horizontalCenter
 
@@ -26,7 +38,7 @@ Column {
     }
 
     StyledText {
-        id: text
+        id: timeText
 
         anchors.horizontalCenter: parent.horizontalCenter
 
