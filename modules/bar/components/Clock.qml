@@ -5,7 +5,7 @@ import qs.services
 import qs.config
 import QtQuick
 
-Column {
+Row {
     id: root
 
     property color colour: Colours.palette.m3tertiary
@@ -15,17 +15,17 @@ Column {
     StyledText {
         id: dateText
 
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
 
-        horizontalAlignment: StyledText.AlignHCenter
-        text: Time.format("dd\nMM\nyy")
+        verticalAlignment: StyledText.AlignVCenter
+        text: Time.format("dd/MM/yy")
         font.pointSize: Appearance.font.size.smaller
         font.family: Appearance.font.family.mono
         color: root.colour
     }
 
     Loader {
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
 
         active: Config.bar.clock.showIcon
         visible: active
@@ -40,10 +40,10 @@ Column {
     StyledText {
         id: timeText
 
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
 
-        horizontalAlignment: StyledText.AlignHCenter
-        text: Time.format("hh\nmm\nss")
+        verticalAlignment: StyledText.AlignVCenter
+        text: Time.format("hh:mm:ss")
         font.pointSize: Appearance.font.size.smaller
         font.family: Appearance.font.family.mono
         color: root.colour

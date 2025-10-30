@@ -55,10 +55,10 @@ Variants {
             WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.session ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
             mask: Region {
-                x: bar.implicitWidth + win.dragMaskPadding
-                y: Config.border.thickness + win.dragMaskPadding
-                width: win.width - bar.implicitWidth - Config.border.thickness - win.dragMaskPadding * 2
-                height: win.height - Config.border.thickness * 2 - win.dragMaskPadding * 2
+                x: Config.border.thickness + win.dragMaskPadding
+                y: bar.implicitHeight + Config.border.thickness + win.dragMaskPadding
+                width: win.width - Config.border.thickness * 2 - win.dragMaskPadding * 2
+                height: win.height - bar.implicitHeight - Config.border.thickness * 2 - win.dragMaskPadding * 2
                 intersection: Intersection.Xor
 
                 regions: regions.instances
@@ -77,8 +77,8 @@ Variants {
                 Region {
                     required property Item modelData
 
-                    x: modelData.x + bar.implicitWidth
-                    y: modelData.y + Config.border.thickness
+                    x: modelData.x + Config.border.thickness
+                    y: modelData.y + bar.implicitHeight + Config.border.thickness
                     width: modelData.width
                     height: modelData.height
                     intersection: Intersection.Subtract
@@ -163,7 +163,8 @@ Variants {
                     id: bar
 
                     anchors.top: parent.top
-                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
 
                     screen: scope.modelData
                     visibilities: visibilities
