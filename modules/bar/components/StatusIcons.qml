@@ -29,8 +29,6 @@ StyledRect {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: Appearance.padding.normal
-        anchors.rightMargin: Appearance.padding.normal
 
         spacing: Appearance.spacing.smaller / 2
 
