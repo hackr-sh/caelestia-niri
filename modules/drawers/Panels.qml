@@ -91,6 +91,7 @@ Item {
         id: popouts
 
         screen: root.screen
+        z: 1000  // Ensure popout is above other panels and Interactions MouseArea
 
         x: {
             if (isDetached)

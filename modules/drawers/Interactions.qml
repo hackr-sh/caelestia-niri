@@ -17,9 +17,11 @@ CustomMouseArea {
     property bool dashboardShortcutActive
     property bool osdShortcutActive
     property bool utilitiesShortcutActive
+    property bool pressingOverPopout: false
 
     function withinPanelHeight(panel: Item, x: real, y: real): bool {
-        const panelY = Config.border.thickness + panel.y;
+        // Panels component has topMargin for bar, so account for that
+        const panelY = Config.border.thickness + bar.implicitHeight + panel.y;
         return y >= panelY - Config.border.rounding && y <= panelY + panel.height + Config.border.rounding;
     }
 
@@ -37,11 +39,15 @@ CustomMouseArea {
     }
 
     function inTopPanel(panel: Item, x: real, y: real): bool {
-        return y < Config.border.thickness + panel.y + panel.height && withinPanelWidth(panel, x, y);
+        // Panels component has topMargin for bar, so account for that
+        const panelY = Config.border.thickness + bar.implicitHeight + panel.y;
+        return y < panelY + panel.height && withinPanelWidth(panel, x, y);
     }
 
     function inBottomPanel(panel: Item, x: real, y: real): bool {
-        return y > root.height - Config.border.thickness - panel.height - Config.border.rounding && withinPanelWidth(panel, x, y);
+        // Panels component has topMargin for bar, so account for that
+        const panelY = Config.border.thickness + bar.implicitHeight + panel.y;
+        return y > panelY + panel.height - Config.border.rounding && withinPanelWidth(panel, x, y);
     }
 
     function onWheel(event: WheelEvent): void {
@@ -52,8 +58,54 @@ CustomMouseArea {
 
     anchors.fill: parent
     hoverEnabled: true
+    propagateComposedEvents: true
 
-    onPressed: event => dragStart = Qt.point(event.x, event.y)
+    function isOverPopout(x: real, y: real): bool {
+        if (!popouts.hasCurrent || popouts.isDetached)
+            return false;
+        // Popout x and y are relative to Panels, which is offset by:
+        // - x: Config.border.thickness (left margin)  
+        // - y: bar.implicitHeight + Config.border.thickness (top margin)
+        // Map popout coordinates from Panels to window (parent of Interactions)
+        const popoutInWindow = panels.mapToItem(parent, panels.popouts.x, panels.popouts.y);
+        const popoutX = popoutInWindow.x;
+        const popoutY = popoutInWindow.y;
+        const inPopout = x >= popoutX && x <= popoutX + panels.popouts.width &&
+                         y >= popoutY && y <= popoutY + panels.popouts.height;
+        return inPopout;
+    }
+
+    acceptedButtons: Qt.AllButtons
+    
+    onPressed: event => {
+        // Allow clicks on popout buttons to pass through
+        if (isOverPopout(event.x, event.y)) {
+            pressingOverPopout = true;
+            // Don't accept the event so popout buttons can receive it
+            event.accepted = false;
+            return;
+        }
+        pressingOverPopout = false;
+        dragStart = Qt.point(event.x, event.y);
+    }
+    
+    onReleased: event => {
+        pressingOverPopout = false;
+    }
+    
+    onClicked: event => {
+        // Don't consume clicks over popouts
+        if (isOverPopout(event.x, event.y)) {
+            event.accepted = false;
+            return;
+        }
+    }
+    
+    onDoubleClicked: event => {
+        if (isOverPopout(event.x, event.y)) {
+            event.accepted = false;
+        }
+    }
     onContainsMouseChanged: {
         if (!containsMouse) {
             // Only hide if not activated by shortcut
@@ -68,7 +120,8 @@ CustomMouseArea {
             if (!utilitiesShortcutActive)
                 visibilities.utilities = false;
 
-            if (!popouts.currentName.startsWith("traymenu") || (popouts.current?.depth ?? 0) <= 1) {
+            // Don't close popout if we were just pressing on it
+            if (!pressingOverPopout && (!popouts.currentName.startsWith("traymenu") || (popouts.current?.depth ?? 0) <= 1)) {
                 popouts.hasCurrent = false;
                 bar.closeTray();
             }
@@ -201,9 +254,12 @@ CustomMouseArea {
         // Show popouts on hover
         if (y < bar.implicitHeight) {
             bar.checkPopout(x);
-        } else if ((!popouts.currentName.startsWith("traymenu") || (popouts.current?.depth ?? 0) <= 1) && !inTopPanel(panels.popouts, x, y)) {
-            popouts.hasCurrent = false;
-            bar.closeTray();
+        } else if ((!popouts.currentName.startsWith("traymenu") || (popouts.current?.depth ?? 0) <= 1)) {
+            // Don't close popout if we're currently pressing on it, hovering over it, or if we're pressed
+            if (!pressed && !pressingOverPopout && !isOverPopout(x, y)) {
+                popouts.hasCurrent = false;
+                bar.closeTray();
+            }
         }
     }
 
