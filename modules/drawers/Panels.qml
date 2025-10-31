@@ -102,7 +102,7 @@ Item {
                 return off + diff;
             return Math.max(off, 0);
         }
-        y: isDetached ? (root.height - nonAnimHeight) / 2 : (bar.implicitHeight + Config.border.thickness)
+        y: isDetached ? (root.height - nonAnimHeight) / 2 : 0
     }
 
     Utilities.Wrapper {
